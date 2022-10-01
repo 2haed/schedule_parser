@@ -2,49 +2,63 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 import pandas as pd
-from apiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
+import sys
+from constants import time
 
 
-URL = 'https://rasp.rea.ru/?q=15.01д-мфм01/20б'
-options = webdriver.ChromeOptions()
-s = Service('E:/CODES/GitHub/schedule_parser/yandexdriver.exe')
-driver = webdriver.Chrome(service=s, options=options)
-driver.get(URL)
-driver.implicitly_wait(5)
-schedule = driver.find_elements(By.CSS_SELECTOR, 'table')
-days = []
-time = set()
-pares = []
-for table in schedule:
-    days.append(table.find_element(By.CSS_SELECTOR, 'h5').text.split(',')[0].capitalize())
-    pares.append(table.find_elements(By.CLASS_NAME, 'slot'))
-    for i in table.find_elements(By.CSS_SELECTOR, 'td'):
-        time.add(' '.join(i.text.split()))
+class ScheduleParser:
+    URL = 'https://rasp.rea.ru/?q='
+    OPTIONS = webdriver.ChromeOptions()
+    SERVICE = Service('yandexdriver.exe')
 
-time.discard('')
-time = set([x for x in time if len(x.split()) > 2])
-new_set = set()
-for i in time:
-    if i[0].isdigit():
-        new_set.add(i)
-new_set.discard('1 пара')
-time = list(sorted(new_set, key=lambda x: x[0]))
-df = pd.DataFrame(index=time)
-lst = []
-new_schedule = []
-for pare in pares:
-    lst.append([x.text.strip().replace('\n', ' ') for x in pare])
-for line in lst:
-    new_schedule.append([(' '.join(x.split()[:4]),' '.join(x.split()[4:])) for x in line if len(x.split()) != 2])
-for line in new_schedule:
-    if not line:
-        line.append(('1 пара 08:30 10:00', 'Занятия отсутствуют'))
-for day, line in enumerate(new_schedule):
-    idx, values = zip(*line)
-    df.loc[list(idx), [day]] = pd.Series(values, list(idx))
-for i, day in enumerate(days):
-    df = df.rename(columns={i: day})
-df = df.fillna('-')
-print(df)
-driver.quit()
+    def __init__(self, group_name):
+        self.driver = webdriver.Chrome(service=self.SERVICE, options=self.OPTIONS)
+        self.group_name = group_name
+
+    def get_schedule(self):
+        self.driver.get('{}{}'.format(self.URL, self.group_name))
+        self.driver.implicitly_wait(1)
+        try:
+            if self.driver.find_element(By.CSS_SELECTOR, 'table'):
+                schedule = self.driver.find_elements(By.CSS_SELECTOR, 'table')
+                return schedule
+        except Exception:
+            print(self.driver.find_element(By.CSS_SELECTOR, 'h2').text, self.driver.find_element(By.CSS_SELECTOR, 'h3').text, sep='\n')
+            self.driver.quit()
+            sys.exit(0)
+        self.driver.quit()
+
+    def get_days(self):
+        days = []
+        schedule = self.get_schedule()
+        for table in schedule:
+            days.append(table.find_element(By.CSS_SELECTOR, 'h5').text.capitalize())
+        return days
+
+    def get_pares(self):
+        pares = []
+        schedule = self.get_schedule()
+        for table in schedule:
+            pares.append(table.find_elements(By.CLASS_NAME, 'slot'))
+        return pares
+
+    def build_dataframe(self):
+        dataframe = pd.DataFrame(index=time)
+        lst = []
+        new_schedule = []
+        for pare in self.get_pares():
+            lst.append([x.text.strip().replace('\n', ' ') for x in pare])
+        for line in lst:
+            new_schedule.append(
+                [(' '.join(x.split()[:4]), ' '.join(x.split()[4:])) for x in line if len(x.split()) != 2])
+        for line in new_schedule:
+            if not line:
+                line.append(('1 пара 08:30 10:00', 'Занятия отсутствуют'))
+        for day, line in enumerate(new_schedule):
+            idx, values = zip(*line)
+            dataframe.loc[list(idx), [day]] = pd.Series(values, list(idx))
+        for index, day in enumerate(self.get_days()):
+            dataframe = dataframe.rename(columns={index: day})
+        dataframe = dataframe.fillna('-')
+        self.driver.quit()
+        return dataframe
