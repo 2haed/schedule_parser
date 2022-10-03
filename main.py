@@ -8,7 +8,10 @@ def main():
         print('Bye!')
         sys.exit(0)
     else:
-        print(ScheduleParser(group_name=group_name).build_dataframe())
+        with ScheduleParser(driver=None, schedule=None) as parser:
+            parser.get_schedule(group_name.lower())
+            df = parser.build_dataframe()
+            print(df)
 
 
 if __name__ == '__main__':
