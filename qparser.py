@@ -11,13 +11,13 @@ from dataclasses import dataclass
 class ScheduleParser:
     URL = 'https://rasp.rea.ru/?q='
     OPTIONS = webdriver.ChromeOptions().add_argument('headless')
-    SERVICE = Service('Wanderer.exe')
+    SERVICE = Service('yandexdriver.exe')
     driver: str
     schedule: str
 
     def get_schedule(self, group_name: str) -> None:
         self.driver.get('{}{}'.format(self.URL, group_name))
-        self.driver.implicitly_wait(1)  # TODO: разобраться в wait
+        self.driver.implicitly_wait(1)
         try:
             if self.driver.find_element(By.CSS_SELECTOR, 'table'):
                 self.schedule = self.driver.find_elements(By.CSS_SELECTOR, 'table')
