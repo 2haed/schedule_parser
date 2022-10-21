@@ -26,8 +26,8 @@ class ScheduleParser:
     URL = 'https://rasp.rea.ru/?q='
     OPTIONS = webdriver.ChromeOptions().add_argument('headless')
     SERVICE = Service('yandexdriver.exe')
-    driver: str
-    schedule: str
+    driver: str = field(default="")
+    schedule: str = field(default="")
 
     def get_schedule(self, group_name: str) -> None:
         self.driver.get('{}{}'.format(self.URL, group_name))

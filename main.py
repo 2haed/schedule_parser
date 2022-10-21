@@ -11,11 +11,12 @@ def main():
         print('Bye!')
         sys.exit(0)
     else:
-        with ScheduleParser(driver=None, schedule=None) as parser:
+        with ScheduleParser() as parser:
             parser.get_schedule(group_name.lower())
             json_dict = del_none(json_formatter(parser.build_dataframe()))
             for key, val in json_dict.items():
                 for k, v in val.items():
+                    print(f'{key}, {k}: {v}')
                     if v == 'Занятия отсутствуют':
                         continue
                     else:
