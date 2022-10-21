@@ -3,8 +3,22 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 import pandas as pd
 import sys
+import json
 from constants import time
 from dataclasses import dataclass
+
+
+def del_none(dictionary):
+    for key, value in list(dictionary.items()):
+        if value is None:
+            del dictionary[key]
+        elif isinstance(value, dict):
+            del_none(value)
+    return dictionary
+
+
+def json_formatter(df) -> None:
+    return json.loads(df.to_json(orient='columns', force_ascii=False))
 
 
 @dataclass
@@ -37,16 +51,17 @@ class ScheduleParser:
             lst.append([x.text.strip().replace('\n', ' ') for x in pare])
         for line in lst:
             new_schedule.append(
-                [(' '.join(x.split()[:4]), ' '.join(x.split()[4:])) for x in line if len(x.split()) != 2])
+                [(' '.join(x.split()[2:4]), ' '.join(x.split()[4:])) for x in line if len(x.split()) != 2])
         for line in new_schedule:
             if not line:
-                line.append(('1 пара 08:30 10:00', 'Занятия отсутствуют'))
+                line.append(('08:30 10:00', 'Занятия отсутствуют'))
         for day, line in enumerate(new_schedule):
             idx, values = zip(*line)
             dataframe.loc[list(idx), [day]] = pd.Series(values, list(idx))
-        for index, day in enumerate(self.get_info(lambda x: x.find_element(By.CSS_SELECTOR, 'h5').text.capitalize())):
+        for index, day in enumerate(self.get_info(
+                lambda x: "-".join(x.find_element(By.CSS_SELECTOR, 'h5').text.split(',')[1].split('.')[::-1]).replace(
+                    ' ', ''))):
             dataframe = dataframe.rename(columns={index: day})
-        dataframe = dataframe.fillna('-')
         return dataframe
 
     def __enter__(self):

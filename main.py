@@ -1,4 +1,7 @@
-from qparser import ScheduleParser
+from qparser import ScheduleParser, json_formatter, del_none
+from calendar_client import GoogleCalendar
+from constants import calendar
+import regex as re
 import sys
 
 
@@ -10,8 +13,32 @@ def main():
     else:
         with ScheduleParser(driver=None, schedule=None) as parser:
             parser.get_schedule(group_name.lower())
-            df = parser.build_dataframe()
-            print(df)
+            json_dict = del_none(json_formatter(parser.build_dataframe()))
+            for key, val in json_dict.items():
+                for k, v in val.items():
+                    if v == 'Занятия отсутствуют':
+                        continue
+                    else:
+                        date_time_start = key + 'T' + k.split()[0] + ':00'
+                        date_time_end = key + 'T' + k.split()[1] + ':00'
+                        location = ' '.join(v.split()[-7:])
+                        summary = list(filter(None, re.split('(?=[А-Я])', ' '.join(v.split()[:-7]))))
+                        obj = GoogleCalendar()
+                        event = {
+                            'summary': summary[0],
+                            'location': location if re.findall("\d+", location) != 2 else None,
+                            'description': summary[1] if not len(summary) == 1 else None,
+                            'start': {
+                                'dateTime': date_time_start,
+                                'timeZone': 'Europe/Moscow'
+                            },
+                            'end': {
+                                'dateTime': date_time_end,
+                                'timeZone': 'Europe/Moscow'
+                            },
+                        }
+
+                        event = obj.add_event(calendar_id=calendar, body=event)
 
 
 if __name__ == '__main__':
