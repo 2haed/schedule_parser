@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 
 class GoogleCalendar:
     SCOPES = ['https://www.googleapis.com/auth/calendar']
-    FILE_PATH = 'calendar_client.json'
+    FILE_PATH = 'data/calendar_client.json'
 
     def __init__(self):
         credentials = service_account.Credentials.from_service_account_file(
