@@ -1,0 +1,118 @@
+Index: main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/main.py b/main.py
+--- a/main.py	
++++ b/main.py	
+@@ -1,5 +1,7 @@
+ from qparser import ScheduleParser
++# from saver import Saver
+ import sys
++import json
+ 
+ 
+ def main():
+@@ -8,7 +10,15 @@
+         print('Bye!')
+         sys.exit(0)
+     else:
+-        print(ScheduleParser(group_name=group_name).build_dataframe())
++        with ScheduleParser() as parser:
++            parser.get_schedule(group_name.lower())
++            df = parser.build_dataframe()
++            print(df)
++            df.to_csv('schedule.csv', encoding='utf-8', index=False)
++            # out = df.to_json(orient='table')[1:-1].replace('},{', '} {')
++        with open('schedule.json', 'w', encoding='UTF-8') as file:
++            json.dump(out, file, indent=2, separators=(', ', ': '), ensure_ascii=True)
++        # print(ScheduleParser(group_name=group_name.lower()).build_dataframe())
+ 
+ 
+ if __name__ == '__main__':
+Index: qparser.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/qparser.py b/qparser.py
+--- a/qparser.py	
++++ b/qparser.py	
+@@ -9,44 +9,32 @@
+ class ScheduleParser:
+     URL = 'https://rasp.rea.ru/?q='
+     OPTIONS = webdriver.ChromeOptions()
++    OPTIONS.add_argument('headless')
+     SERVICE = Service('yandexdriver.exe')
+ 
+-    def __init__(self, group_name):
+-        self.driver = webdriver.Chrome(service=self.SERVICE, options=self.OPTIONS)
+-        self.group_name = group_name
++    def __init__(self):
++        self.driver = None
++        self.schedule = None
+ 
+-    def get_schedule(self):
+-        self.driver.get('{}{}'.format(self.URL, self.group_name))
+-        self.driver.implicitly_wait(1)
++    def get_schedule(self, group_name: str) -> None:
++        self.driver.get('{}{}'.format(self.URL, group_name))
++        self.driver.implicitly_wait(1)  # TODO: разобраться в wait
+         try:
+             if self.driver.find_element(By.CSS_SELECTOR, 'table'):
+-                schedule = self.driver.find_elements(By.CSS_SELECTOR, 'table')
+-                return schedule
++                self.schedule = self.driver.find_elements(By.CSS_SELECTOR, 'table')
+         except Exception:
+-            print(self.driver.find_element(By.CSS_SELECTOR, 'h2').text, self.driver.find_element(By.CSS_SELECTOR, 'h3').text, sep='\n')
+-            self.driver.quit()
++            print(self.driver.find_element(By.CSS_SELECTOR, 'h2').text,
++                  self.driver.find_element(By.CSS_SELECTOR, 'h3').text, sep='\n')
+             sys.exit(0)
+-        self.driver.quit()
+ 
+-    def get_days(self):
+-        days = []
+-        schedule = self.get_schedule()
+-        for table in schedule:
+-            days.append(table.find_element(By.CSS_SELECTOR, 'h5').text.capitalize())
+-        return days
++    def get_info(self, finder) -> list:
++        return [finder(table) for table in self.schedule]
+ 
+-    def get_pares(self):
+-        pares = []
+-        schedule = self.get_schedule()
+-        for table in schedule:
+-            pares.append(table.find_elements(By.CLASS_NAME, 'slot'))
+-        return pares
+-
+-    def build_dataframe(self):
++    def build_dataframe(self) -> pd.DataFrame:
+         dataframe = pd.DataFrame(index=time)
+         lst = []
+         new_schedule = []
+-        for pare in self.get_pares():
++        for pare in self.get_info(lambda x: x.find_elements(By.CLASS_NAME, 'slot')):
+             lst.append([x.text.strip().replace('\n', ' ') for x in pare])
+         for line in lst:
+             new_schedule.append(
+@@ -57,8 +45,15 @@
+         for day, line in enumerate(new_schedule):
+             idx, values = zip(*line)
+             dataframe.loc[list(idx), [day]] = pd.Series(values, list(idx))
+-        for index, day in enumerate(self.get_days()):
++        for index, day in enumerate(self.get_info(lambda x: x.find_element(By.CSS_SELECTOR, 'h5').text.capitalize())):
+             dataframe = dataframe.rename(columns={index: day})
+         dataframe = dataframe.fillna('-')
++        return dataframe
++
++    def __enter__(self):
++        self.driver = webdriver.Chrome(service=self.SERVICE, options=self.OPTIONS)
++        return self
++
++    def __exit__(self, exc_type, exc_val, exc_tb):
++        # if driver is working now
+         self.driver.quit()
+-        return dataframe
