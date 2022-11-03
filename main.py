@@ -1,6 +1,6 @@
 from qparser import ScheduleParser, json_formatter, del_none
 from calendar_client import GoogleCalendar
-from constants import calendar
+from constants import exam_calendar, lecture_calendar, lab_calendar, consult_calendar, practical_calendar
 import regex as re
 import sys
 
@@ -16,7 +16,6 @@ def main():
             json_dict = del_none(json_formatter(parser.build_dataframe()))
             for key, val in json_dict.items():
                 for k, v in val.items():
-                    print(f'{key}, {k}: {v}')
                     if v == 'Занятия отсутствуют':
                         continue
                     else:
@@ -38,8 +37,16 @@ def main():
                                 'timeZone': 'Europe/Moscow'
                             },
                         }
-
-                        event = obj.add_event(calendar_id=calendar, body=event)
+                        if event['description'] in ('Экзамен', 'Зачёт', 'Диф. зачет'):
+                            event = obj.add_event(calendar_id=exam_calendar, body=event)
+                        elif event['description'] == 'Практическое занятие':
+                            event = obj.add_event(calendar_id=practical_calendar, body=event)
+                        elif event['description'] == 'Лекция':
+                            event = obj.add_event(calendar_id=lecture_calendar, body=event)
+                        elif event['description'] == 'Консультации':
+                            event = obj.add_event(calendar_id=consult_calendar, body=event)
+                        elif event['description'] == 'Лабораторная работа':
+                            event = obj.add_event(calendar_id=lab_calendar, body=event)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,5 @@
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from constants import calendar
-import pprint
 
 
 class GoogleCalendar:

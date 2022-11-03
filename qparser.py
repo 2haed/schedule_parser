@@ -5,7 +5,7 @@ import pandas as pd
 import sys
 import json
 from constants import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def del_none(dictionary):
