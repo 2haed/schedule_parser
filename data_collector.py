@@ -24,7 +24,7 @@ def get_schedule() -> Optional[Union[Exception, dict]]:
         params['weekNum'] = str(week_num)
         try:
             response = requests.request("GET", url, headers=headers, params=params).text
-            page = re.sub('<br/>', ' ', response)
+            page = re.sub(r'<br/>', ' ', response)
             soup = BeautifulSoup(page, 'html.parser')
             for day in soup.find_all('div', class_='container'):
                 date = day.find('th', class_='dayh').text

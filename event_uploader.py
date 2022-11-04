@@ -1,6 +1,6 @@
 from typing import Optional, Union
 from calendar_client import GoogleCalendar
-from data.constants import exam_calendar, lecture_calendar, lab_calendar, consult_calendar, practical_calendar
+from data.constants import calendars
 import regex as re
 import json
 
@@ -38,23 +38,14 @@ def upload_schedule(schedule: dict) -> Optional[Union[Exception, None]]:
                 },
             }
             obj = GoogleCalendar()
-            if event['description'] in ('Экзамен', 'Зачёт', 'Диф. зачет'):
-                obj.add_event(calendar_id=exam_calendar, body=event)
-            elif event['description'] == 'Практическое занятие':
-                obj.add_event(calendar_id=practical_calendar, body=event)
-            elif event['description'] == 'Лекция':
-                obj.add_event(calendar_id=lecture_calendar, body=event)
-            elif event['description'] == 'Консультации':
-                obj.add_event(calendar_id=consult_calendar, body=event)
-            elif event['description'] == 'Лабораторная работа':
-                obj.add_event(calendar_id=lab_calendar, body=event)
+            if event['description'] in calendars:
+                obj.add_event(calendar_id=calendars[event['description']], body=event)
         except Exception as ex:
             return ex
 
 
 def main():
     upload_schedule(load_schedule(filename='data/data.json'))
-
 
 
 if __name__ == '__main__':
